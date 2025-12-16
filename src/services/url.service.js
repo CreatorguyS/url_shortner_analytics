@@ -7,6 +7,10 @@ const shortCode=generateShortCode();
 const CACHE_TTL=60*60;
 
 const  createShortUrl=async(longUrl)=>{
+
+    if(!longUrl.startsWith("http://")&&!longUrl.startsWith("https://")){
+        longurl="https://"+longUrl;
+    }
     const shortCode=generateShortCode();
 
     const url=await Url.create({
@@ -17,26 +21,34 @@ const  createShortUrl=async(longUrl)=>{
     return url;
 };
 
-const getLongUrl=async(shortcode)=>{
-   
+const getLongUrl=async(shortCode)=>{
     const cachedLongUrl=await redisClient.get(shortCode);
     if(cachedLongUrl){
-        return {longurl:cachedLongUrl};
-    }
-    console.log("cache miss");
+        console.log("CACHE HIT");
 
-    //fallback to mongodb
+        await Url.updateOne(
+            {shortCode},
+            {$inc:{clicks:1}}
+        );
+
+        return {longUrl:cachedLongUrl};
+    }
+    console.log("CACHE MISS");
+
     const url=await Url.findOne({shortCode});
 
     if(!url)return null;
 
+    url.clicks+=1;
+
+    await url.save();
+
     await redisClient.set(shortCode,url.longUrl,{
-        Ex:CACHE_TTL
+        EX:CACHE_TTL
     });
     return url;
-
-};
-
+ 
+}
 module.exports={
     createShortUrl,
     getLongUrl
