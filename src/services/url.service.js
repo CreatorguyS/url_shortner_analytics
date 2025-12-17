@@ -1,55 +1,64 @@
-const Url=require("../models/url.model")
-const generateShortCode = require("../utils/base62")
-const redisClient=require("../cache/redis.client")
+const Url = require("../models/url.model");
+const generateShortCode = require("../utils/base62");
+const redisClient = require("../cache/redis.client");
 
+const CACHE_TTL = 60 * 60; // 1 hour
 
-const shortCode=generateShortCode();
-const CACHE_TTL=60*60;
+const createShortUrl = async (longUrl) => {
+  if (
+    !longUrl.startsWith("http://") &&
+    !longUrl.startsWith("https://")
+  ) {
+    longUrl = "https://" + longUrl;
+  }
 
-const  createShortUrl=async(longUrl)=>{
+  const shortCode = generateShortCode();
 
-    if(!longUrl.startsWith("http://")&&!longUrl.startsWith("https://")){
-        longurl="https://"+longUrl;
-    }
-    const shortCode=generateShortCode();
+  const url = await Url.create({
+    shortCode,
+    longUrl,
+    clicks: 0
+  });
 
-    const url=await Url.create({
-        shortCode,
-        longUrl
-    });
-
-    return url;
+  return url;
 };
 
-const getLongUrl=async(shortCode)=>{
-    const cachedLongUrl=await redisClient.get(shortCode);
-    if(cachedLongUrl){
+// PHASE 4: READ ONLY
+const getLongUrl = async (shortCode) => {
+  // 1️⃣ Try Redis
+  try {
+    if (redisClient.isOpen) {
+      const cachedLongUrl = await redisClient.get(shortCode);
+      if (cachedLongUrl) {
         console.log("CACHE HIT");
-
-        await Url.updateOne(
-            {shortCode},
-            {$inc:{clicks:1}}
-        );
-
-        return {longUrl:cachedLongUrl};
+        return { longUrl: cachedLongUrl };
+      }
     }
-    console.log("CACHE MISS");
+  } catch (err) {
+    console.warn("Redis error, fallback to DB");
+  }
 
-    const url=await Url.findOne({shortCode});
+  console.log("CACHE MISS");
 
-    if(!url)return null;
+  // 2️⃣ MongoDB read ONLY
+  const url = await Url.findOne({ shortCode });
+  if (!url) return null;
 
-    url.clicks+=1;
+  // 3️⃣ Cache refill
+  try {
+    if (redisClient.isOpen) {
+      await redisClient.set(shortCode, url.longUrl, {
+        EX: CACHE_TTL
+      });
+    }
+  } catch (err) {
+    console.warn("Redis set failed");
+  }
 
-    await url.save();
+  return url;
+};
 
-    await redisClient.set(shortCode,url.longUrl,{
-        EX:CACHE_TTL
-    });
-    return url;
- 
-}
-module.exports={
-    createShortUrl,
-    getLongUrl
+module.exports = {
+  createShortUrl,
+  getLongUrl
 };

@@ -1,5 +1,8 @@
 const urlService=require("../services/url.service")
 
+const analyticsQueue=require("../queue/analytics.queue")
+
+
 const createUrl=async(req,res)=>{
     const {longUrl}=req.body
     if(!longUrl){
@@ -20,7 +23,9 @@ const redirectUrl = async (req, res) => {
     if (!url) {
       return res.status(404).json({ error: "URL not found" });
     }
-
+     await analyticsQueue.add("increment-click",{
+      shortCode
+     });
     console.log("REDIRECTING TO:", url.longUrl); // 👈 ADD THIS
 
     res.redirect(url.longUrl);

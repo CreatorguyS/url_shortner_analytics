@@ -1,19 +1,24 @@
-const express=require("express");
-const urlController=require("./controllers/url.controller")
-const urlRoutes=require("./routes/url.routes")
-const app=express();
+const express = require("express");
+const urlController = require("./controllers/url.controller");
+const urlRoutes = require("./routes/url.routes");
+const rateLimiter = require("./middlewares/rateLimiter");
 
-app.use(express.json())
+const app = express();
 
-app.use("/api",urlRoutes);
+app.use(express.json());
 
-app.get("/:shortCode",urlController.redirectUrl);
-app.get("/health",(req,res)=>{
-    res.status(200).json({
-        status:"ok",
-        message:"server is working fine"
-    });
+// API routes
+app.use("/api", urlRoutes);
+
+// 🔥 SHORT URL ROUTE (RATE LIMITED)
+app.get("/:shortCode", rateLimiter, urlController.redirectUrl);
+
+// Health check
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "server is working fine"
+  });
 });
 
-module.exports=app;
-
+module.exports = app;
