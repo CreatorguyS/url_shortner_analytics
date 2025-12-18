@@ -4,9 +4,12 @@
   "description": "",
   "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest --runInBand",
     "start": "nodemon server.js",
     "dev": " nodemon server.js"
+  },
+  "jest": {
+    "setupFilesAfterEnv": ["<rootDir>/src/tests/setup.js"]
   },
   "keywords": [],
   "author": "",
@@ -17,5 +20,9 @@
     "express": "^5.2.1",
     "mongoose": "^9.0.1",
     "redis": "^5.10.0"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "supertest": "^7.1.4"
   }
 }
