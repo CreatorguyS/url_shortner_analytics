@@ -7,12 +7,6 @@ const app = express();
 
 app.use(express.json());
 
-// API routes
-app.use("/api", urlRoutes);
-
-// 🔥 SHORT URL ROUTE (RATE LIMITED)
-app.get("/:shortCode", rateLimiter, urlController.redirectUrl);
-
 // Health check
 app.get("/health", (req, res) => {
   res.status(200).json({
@@ -20,5 +14,18 @@ app.get("/health", (req, res) => {
     message: "server is working fine"
   });
 });
+
+// API routes
+app.use("/api", urlRoutes);
+
+app.get('/', (req, res) => {
+    res.status(200).json({
+        message: "URL Shortener API is running!",
+        database: "MongoDB Connected"
+    });
+});
+
+// 🔥 SHORT URL REDIRECT (RATE LIMITED) — must be last
+app.get("/:shortCode", rateLimiter, urlController.redirectUrl);
 
 module.exports = app;
