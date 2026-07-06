@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URL Shortener</title>
+  <meta name="description" content="Shorten URLs and track click analytics.">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #f3f2f1;
+      color: #323130;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      max-width: 980px;
+      margin: 0 auto 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #d2d0ce;
+    }
+    header h1 { font-size: 1.6rem; font-weight: 600; color: #201f1e; }
+    header p  { font-size: 0.875rem; color: #605e5c; margin-top: 0.2rem; }
+
+    .layout {
+      max-width: 980px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 1.25rem;
+    }
+    @media (max-width: 700px) { .layout { grid-template-columns: 1fr; } }
+
+    .card {
+      background: #fff;
+      border: 1px solid #d2d0ce;
+      border-radius: 2px;
+      padding: 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; border-bottom: 1px solid #d2d0ce; margin-bottom: 1rem; gap: .5rem; }
+    .tab-btn {
+      padding: .45rem .6rem;
+      background: none; border: none; cursor: pointer;
+      font-size: .875rem; font-weight: 600; color: #605e5c;
+      position: relative;
+    }
+    .tab-btn:hover { color: #323130; }
+    .tab-btn.active { color: #0078d4; }
+    .tab-btn.active::after {
+      content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+      height: 2px; background: #0078d4;
+    }
+
+    /* ── Forms ── */
+    .field { margin-bottom: .9rem; }
+    .field label { display: block; font-size: .8rem; font-weight: 600; margin-bottom: .3rem; }
+    .field input, .field select {
+      width: 100%; padding: .45rem .55rem;
+      border: 1px solid #a19f9d; border-radius: 2px;
+      font-size: .875rem; background: #fff; color: #323130; outline: none;
+    }
+    .field input:focus, .field select:focus { border-color: #0078d4; }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+      padding: .5rem 1rem; border: none; border-radius: 2px; cursor: pointer;
+      font-size: .875rem; font-weight: 600; transition: background .1s;
+    }
+    .btn-primary { background: #0078d4; color: #fff; }
+    .btn-primary:hover { background: #106ebe; }
+    .btn-primary:disabled { background: #c8c6c4; color: #a19f9d; cursor: not-allowed; }
+    .btn-outline {
+      background: #fff; color: #323130;
+      border: 1px solid #a19f9d;
+    }
+    .btn-outline:hover { background: #f3f2f1; }
+    .btn-full { width: 100%; }
+
+    /* ── Status messages ── */
+    .msg { margin-top: .75rem; padding: .5rem .7rem; border-radius: 2px; font-size: .82rem; line-height: 1.4; display: none; }
+    .msg.ok  { background: #dff6dd; border: 1px solid #9fd89f; color: #107c41; }
+    .msg.err { background: #fde7e9; border: 1px solid #f4b8c1; color: #a80000; }
+    .msg.inf { background: #e8f4fd; border: 1px solid #a8d1f0; color: #0078d4; }
+
+    /* ── Result box ── */
+    .result-box {
+      margin-top: .9rem; background: #faf9f8;
+      border: 1px solid #d2d0ce; border-radius: 2px; padding: .9rem; display: none;
+    }
+    .result-box h3 { font-size: .82rem; font-weight: 600; color: #0078d4; margin-bottom: .5rem; }
+    .result-row { display: flex; gap: .4rem; }
+    .result-row input {
+      flex: 1; padding: .4rem .5rem; font-family: Consolas, monospace; font-size: .8rem;
+      background: #f3f2f1; border: 1px solid #d2d0ce; border-radius: 2px; color: #323130;
+    }
+    .btn-sm {
+      padding: 0 .8rem; height: 32px; font-size: .8rem; font-weight: 600;
+      border-radius: 2px; cursor: pointer; border: 1px solid #a19f9d;
+      background: #fff; color: #323130; text-decoration: none;
+      display: inline-flex; align-items: center;
+    }
+    .btn-sm:hover { background: #f3f2f1; }
+
+    /* ── Stats ── */
+    .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-bottom: 1rem; }
+    .stat-card { border: 1px solid #d2d0ce; border-radius: 2px; padding: .9rem 1rem; background: #fff; }
+    .stat-card .lbl { font-size: .72rem; font-weight: 600; text-transform: uppercase; color: #605e5c; }
+    .stat-card .val { font-size: 1.5rem; font-weight: 700; color: #323130; margin-top: .2rem; }
+
+    .chart-wrap {
+      border: 1px solid #d2d0ce; border-radius: 2px; padding: .9rem;
+      min-height: 220px; position: relative; background: #fff;
+    }
+    .section-title { font-size: .875rem; font-weight: 600; margin-bottom: .5rem; color: #201f1e; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    th { padding: .4rem .5rem; font-size: .72rem; font-weight: 600; text-transform: uppercase; color: #605e5c; border-bottom: 2px solid #d2d0ce; text-align: left; }
+    td { padding: .4rem .5rem; border-bottom: 1px solid #edebe9; }
+
+    .badge { padding: .1rem .4rem; border-radius: 2px; font-size: .7rem; font-weight: 600; background: #dff6dd; color: #107c41; }
+
+    /* ── Key display ── */
+    .key-display {
+      background: #f3f2f1; border: 1px solid #d2d0ce; border-radius: 2px;
+      padding: .5rem .7rem; font-family: Consolas, monospace; font-size: .78rem;
+      word-break: break-all; color: #323130; margin-top: .5rem; display: none;
+    }
+
+    .divider { border: none; border-top: 1px solid #edebe9; margin: .9rem 0; }
+
+    .session-row {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: .8rem; color: #605e5c;
+    }
+    .badge-status { padding: .15rem .5rem; border-radius: 2px; font-size: .72rem; font-weight: 600; }
+    .badge-ok  { background: #dff6dd; color: #107c41; }
+    .badge-err { background: #fde7e9; color: #a80000; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>URL Shortener</h1>
+    <p>Shorten URLs and view click analytics.</p>
+  </header>
+
+  <div class="layout">
+
+    <!-- ── Left: Settings ── -->
+    <div class="card" style="height:fit-content">
+      <div style="font-size:.95rem;font-weight:600;margin-bottom:.9rem">Settings</div>
+
+      <!-- API Key input -->
+      <div class="field">
+        <label for="inp-apikey">API Key</label>
+        <input type="password" id="inp-apikey" placeholder="Paste your key here" oninput="onKeyInput()">
+      </div>
+
+      <hr class="divider">
+
+      <!-- One-click get key -->
+      <div style="font-size:.8rem;color:#605e5c;margin-bottom:.6rem">
+        Don't have a key? Generate one instantly:
+      </div>
+      <button class="btn btn-outline btn-full" id="btn-getkey" onclick="getKey()">
+        Get API Key
+      </button>
+      <div id="key-display" class="key-display"></div>
+      <div id="getkey-msg" class="msg"></div>
+
+      <hr class="divider">
+
+      <div class="session-row">
+        <span>Status</span>
+        <span id="status-badge" class="badge-status badge-err">No Key</span>
+      </div>
+    </div>
+
+    <!-- ── Right: Actions ── -->
+    <div class="card">
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" id="tab-shorten" onclick="showTab('shorten')">Shorten URL</button>
+        <button class="tab-btn" id="tab-insights" onclick="showTab('insights')">URL Insights</button>
+      </div>
+
+      <!-- ── Tab: Shorten ── -->
+      <div id="pane-shorten">
+        <form onsubmit="doShorten(event)">
+          <div class="field">
+            <label for="inp-url">Destination URL</label>
+            <input type="url" id="inp-url" placeholder="https://example.com/long-url" required>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="inp-code">Custom code (optional)</label>
+              <input type="text" id="inp-code" placeholder="my-link">
+            </div>
+            <div class="field">
+              <label for="inp-ttl">Expiry (optional)</label>
+              <select id="inp-ttl">
+                <option value="">Never</option>
+                <option value="3600">1 Hour</option>
+                <option value="86400">1 Day</option>
+                <option value="604800">7 Days</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full" id="btn-shorten">Shorten URL</button>
+        </form>
+
+        <div id="shorten-msg" class="msg"></div>
+
+        <div id="shorten-result" class="result-box">
+          <h3>Shortened URL</h3>
+          <div class="result-row">
+            <input type="text" id="result-url" readonly>
+            <button class="btn-sm" onclick="copyUrl()" id="btn-copy">Copy</button>
+            <a href="" target="_blank" id="btn-visit" class="btn-sm">Visit</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Tab: Insights ── -->
+      <div id="pane-insights" style="display:none">
+        <form onsubmit="doAnalytics(event)">
+          <div class="field">
+            <label for="inp-code-analytics">Short Code or Short URL</label>
+            <div style="display:flex;gap:.4rem">
+              <input type="text" id="inp-code-analytics" placeholder="e.g. abc123" required>
+              <button type="submit" class="btn btn-primary" id="btn-analytics" style="white-space:nowrap">View Insights</button>
+            </div>
+          </div>
+        </form>
+
+        <div id="analytics-msg" class="msg"></div>
+
+        <div id="analytics-result" style="display:none;margin-top:1rem">
+          <div class="stat-row">
+            <div class="stat-card">
+              <div class="lbl">Total Clicks</div>
+              <div class="val" id="stat-clicks">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="lbl">Short Code</div>
+              <div class="val" id="stat-code" style="font-size:1.1rem">—</div>
+            </div>
+          </div>
+
+          <div class="section-title">Clicks per Day</div>
+          <div class="chart-wrap" style="margin-bottom:1rem">
+            <canvas id="chart-timeline"></canvas>
+          </div>
+
+          <div class="section-title">Top Referrers</div>
+          <div class="chart-wrap" style="min-height:auto;padding:.5rem">
+            <table>
+              <thead><tr><th>Referrer</th><th>Clicks</th></tr></thead>
+              <tbody id="tbl-referrers"></tbody>
+            </table>
+            <div id="no-referrers" style="text-align:center;padding:.9rem;color:#605e5c;font-size:.82rem">No referrer data yet.</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /card -->
+  </div><!-- /layout -->
+
+<script>
+  let chartInst = null;
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('api_key');
+    if (saved) {
+      document.getElementById('inp-apikey').value = saved;
+      setBadge(true);
+    }
+  });
+
+  // ── Tab switching (simple, direct) ────────────────────────────────────────
+  function showTab(name) {
+    document.getElementById('pane-shorten').style.display  = name === 'shorten'  ? 'block' : 'none';
+    document.getElementById('pane-insights').style.display = name === 'insights' ? 'block' : 'none';
+    document.getElementById('tab-shorten').classList.toggle('active',  name === 'shorten');
+    document.getElementById('tab-insights').classList.toggle('active', name === 'insights');
+  }
+
+  // ── API Key helpers ───────────────────────────────────────────────────────
+  function onKeyInput() {
+    const v = document.getElementById('inp-apikey').value.trim();
+    if (v) { localStorage.setItem('api_key', v); setBadge(true); }
+    else   { localStorage.removeItem('api_key'); setBadge(false); }
+  }
+
+  function getApiKey() {
+    return document.getElementById('inp-apikey').value.trim();
+  }
+
+  function setBadge(ok) {
+    const b = document.getElementById('status-badge');
+    b.textContent = ok ? 'Key Configured' : 'No Key';
+    b.className = 'badge-status ' + (ok ? 'badge-ok' : 'badge-err');
+  }
+
+  // ── Get API Key (one-click) ───────────────────────────────────────────────
+  async function getKey() {
+    const btn = document.getElementById('btn-getkey');
+    const msg = document.getElementById('getkey-msg');
+    const display = document.getElementById('key-display');
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    showMsg(msg, 'inf', 'Requesting API key…');
+
+    try {
+      const res = await fetch('/quickstart', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+
+      document.getElementById('inp-apikey').value = data.key;
+      localStorage.setItem('api_key', data.key);
+      setBadge(true);
+      display.textContent = data.key;
+      display.style.display = 'block';
+      showMsg(msg, 'ok', 'API key ready! It has been saved automatically.');
+      btn.textContent = 'Key Generated ✓';
+    } catch (err) {
+      showMsg(msg, 'err', err.message);
+      btn.disabled = false;
+      btn.textContent = 'Get API Key';
+    }
+  }
+
+  // ── Shorten URL ───────────────────────────────────────────────────────────
+  async function doShorten(e) {
+    e.preventDefault();
+    const apiKey = getApiKey();
+    const longUrl = document.getElementById('inp-url').value.trim();
+    const code    = document.getElementById('inp-code').value.trim();
+    const ttl     = document.getElementById('inp-ttl').value;
+    const msg     = document.getElementById('shorten-msg');
+    const result  = document.getElementById('shorten-result');
+    const btn     = document.getElementById('btn-shorten');
+
+    if (!apiKey) { showMsg(msg, 'err', 'Please add your API key in the Settings panel first.'); return; }
+
+    btn.disabled = true;
+    showMsg(msg, 'inf', 'Creating short link…');
+    result.style.display = 'none';
+
+    const body = { longUrl };
+    if (code) body.shortCode = code;
+    if (ttl)  body.expiresAt = new Date(Date.now() + parseInt(ttl) * 1000).toISOString();
+
+    try {
+      const res  = await fetch('/api/url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Server error');
+
+      document.getElementById('result-url').value   = data.shortUrl;
+      document.getElementById('btn-visit').href     = data.shortUrl;
+      result.style.display = 'block';
+      showMsg(msg, 'ok', 'Short link created!');
+    } catch (err) {
+      showMsg(msg, 'err', err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function copyUrl() {
+    const inp = document.getElementById('result-url');
+    inp.select();
+    navigator.clipboard.writeText(inp.value);
+    const btn = document.getElementById('btn-copy');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  }
+
+  // ── Analytics ─────────────────────────────────────────────────────────────
+  async function doAnalytics(e) {
+    e.preventDefault();
+    const apiKey = getApiKey();
+    let code = document.getElementById('inp-code-analytics').value.trim();
+    const msg    = document.getElementById('analytics-msg');
+    const result = document.getElementById('analytics-result');
+    const btn    = document.getElementById('btn-analytics');
+
+    if (!apiKey) { showMsg(msg, 'err', 'Please add your API key in the Settings panel first.'); return; }
+
+    // strip to just code if full URL pasted
+    if (code.includes('/')) code = code.split('/').filter(Boolean).pop();
+
+    btn.disabled = true;
+    showMsg(msg, 'inf', 'Loading analytics…');
+    result.style.display = 'none';
+
+    try {
+      const res  = await fetch(`/api/analytics/${code}?period=7d`, {
+        headers: { 'X-API-Key': apiKey }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Not found');
+
+      document.getElementById('stat-clicks').textContent = data.totalClicks || 0;
+      document.getElementById('stat-code').textContent   = data.shortCode || code;
+
+      renderChart(data.clicksByDay || []);
+      renderReferrers(data.topReferers || []);
+
+      result.style.display = 'block';
+      showMsg(msg, 'ok', 'Analytics loaded.');
+    } catch (err) {
+      showMsg(msg, 'err', err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function renderChart(days) {
+    days.sort((a, b) => new Date(a.date) - new Date(b.date));
+    const ctx = document.getElementById('chart-timeline').getContext('2d');
+    if (chartInst) chartInst.destroy();
+    chartInst = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: days.length ? days.map(d => d.date) : ['No data'],
+        datasets: [{
+          label: 'Clicks', data: days.length ? days.map(d => d.count) : [0],
+          borderColor: '#0078d4', backgroundColor: 'rgba(0,120,212,.08)',
+          borderWidth: 2, fill: true, tension: .2, pointRadius: 3
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+      }
+    });
+  }
+
+  function renderReferrers(refs) {
+    const tbody = document.getElementById('tbl-referrers');
+    const empty = document.getElementById('no-referrers');
+    tbody.innerHTML = '';
+    if (refs.length) {
+      empty.style.display = 'none';
+      refs.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.referer || 'Direct'}</td><td><strong>${r.count}</strong></td>`;
+        tbody.appendChild(tr);
+      });
+    } else {
+      empty.style.display = 'block';
+    }
+  }
+
+  // ── Utility ───────────────────────────────────────────────────────────────
+  function showMsg(el, type, text) {
+    el.textContent = text;
+    el.className = 'msg ' + (type === 'ok' ? 'ok' : type === 'err' ? 'err' : 'inf');
+    el.style.display = 'block';
+  }
+</script>
+</body>
+</html>
