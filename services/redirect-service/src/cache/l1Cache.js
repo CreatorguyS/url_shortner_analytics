@@ -1,12 +1,12 @@
 /**
  * Redirect Service — L1 LRU Cache (50k entries, hot path optimized).
- * Much larger than URL Service L1 since redirect is read-only.
+ * L2: Redis single-node (compatible with Upstash rediss://)
  */
 
 "use strict";
 
 const { LRUCache } = require("lru-cache");
-const { createCluster } = require("redis");
+const { createClient } = require("redis");
 const { createLogger } = require("@url-shortener/shared/logger");
 const { Counter } = require("prom-client");
 
@@ -27,32 +27,26 @@ const l1 = new LRUCache({
   allowStale: false
 });
 
-// L2: Redis Cluster
-const CLUSTER_NODES = (process.env.REDIS_CLUSTER_NODES || "redis-node-1:6379,redis-node-2:6379,redis-node-3:6379")
-  .split(",")
-  .map((node) => {
-    const [host, port] = node.trim().split(":");
-    return { host, port: parseInt(port, 10) };
-  });
+// L2: Redis (Upstash compatible)
+const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
-const redisCluster = createCluster({
-  rootNodes: CLUSTER_NODES,
-  defaults: {
-    socket: {
-      reconnectStrategy: (retries) =>
-        retries > 10 ? new Error("max retries") : Math.min(100 * Math.pow(2, retries), 5000)
-    }
+const redisClient = createClient({
+  url: REDIS_URL,
+  socket: {
+    reconnectStrategy: (retries) =>
+      retries > 10 ? new Error("max retries") : Math.min(100 * Math.pow(2, retries), 5000),
+    tls: REDIS_URL.startsWith("rediss://")
   }
 });
 
-redisCluster.on("error", (err) => logger.error("Redis Cluster error", { error: err.message }));
+redisClient.on("error", (err) => logger.error("Redis error", { error: err.message }));
 
 (async () => {
   try {
-    await redisCluster.connect();
-    logger.info("Redis Cluster connected (redirect-service)");
+    await redisClient.connect();
+    logger.info("Redis connected (redirect-service)");
   } catch (err) {
-    logger.error("Redis Cluster connect failed", { error: err.message });
+    logger.error("Redis connect failed — L2 cache disabled", { error: err.message });
   }
 })();
 
@@ -73,10 +67,10 @@ async function getCachedUrl(shortCode) {
     return l1Val;
   }
 
-  // L2 — Redis Cluster, ~0.5ms
+  // L2 — Redis, ~0.5ms
   try {
-    if (redisCluster.isOpen) {
-      const l2Val = await redisCluster.get(key);
+    if (redisClient.isOpen) {
+      const l2Val = await redisClient.get(key);
       if (l2Val) {
         l2HitCounter.inc();
         l1.set(key, l2Val); // warm L1
@@ -100,8 +94,8 @@ async function setCachedUrl(shortCode, longUrl) {
   const key = `${CACHE_PREFIX}${shortCode}`;
   l1.set(key, longUrl);
   try {
-    if (redisCluster.isOpen) {
-      await redisCluster.set(key, longUrl, { EX: L2_TTL_SEC });
+    if (redisClient.isOpen) {
+      await redisClient.set(key, longUrl, { EX: L2_TTL_SEC });
     }
   } catch (err) {
     logger.warn("L2 cache set error", { error: err.message });

@@ -22,7 +22,7 @@ const { Counter, Histogram } = require("prom-client");
 const logger = createLogger("analytics-worker");
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb://mongo:27017/url-shortener?replicaSet=rs0";
-const REDIS_CLUSTER_NODES = process.env.REDIS_CLUSTER_NODES || "redis-node-1:6379,redis-node-2:6379,redis-node-3:6379";
+const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const BATCH_INTERVAL_MS = parseInt(process.env.ANALYTICS_BATCH_MS || "100", 10);
 const WORKER_CONCURRENCY = parseInt(process.env.ANALYTICS_CONCURRENCY || "20", 10);
 
@@ -109,17 +109,11 @@ const worker = new Worker(
     }
   },
   {
-    connection: (() => {
-      const nodes = REDIS_CLUSTER_NODES.split(",").map((node) => {
-        const [host, port] = node.split(":");
-        return { host, port: parseInt(port, 10) };
-      });
-      return new Redis.Cluster(nodes, {
-        redisOptions: {
-          maxRetriesPerRequest: null
-        }
-      });
-    })(),
+    connection: new Redis(REDIS_URL, {
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      tls: REDIS_URL.startsWith("rediss://") ? {} : undefined
+    }),
     concurrency: WORKER_CONCURRENCY,
     metrics: { maxDataPoints: MetricsTime.ONE_WEEK }
   }

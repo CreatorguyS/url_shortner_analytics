@@ -1,6 +1,6 @@
 /**
  * Analytics queue — fire-and-forget click event publisher.
- * Uses BullMQ connected to Redis Cluster.
+ * Uses BullMQ connected to Redis (Upstash compatible).
  *
  * CRITICAL: This is called on every redirect. Errors must NEVER throw.
  * All errors are silently swallowed so redirect latency is unaffected.
@@ -14,27 +14,23 @@ const { createLogger } = require("@url-shortener/shared/logger");
 
 const logger = createLogger("redirect-service:queue");
 
-const REDIS_CLUSTER_NODES = process.env.REDIS_CLUSTER_NODES || "redis-node-1:6379,redis-node-2:6379,redis-node-3:6379";
+const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
 let analyticsQueue = null;
-let redisClusterConnection = null;
+let redisConnection = null;
 
 function getRedisConnection() {
-  if (!redisClusterConnection) {
-    const nodes = REDIS_CLUSTER_NODES.split(",").map((node) => {
-      const [host, port] = node.split(":");
-      return { host, port: parseInt(port, 10) };
+  if (!redisConnection) {
+    redisConnection = new Redis(REDIS_URL, {
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      tls: REDIS_URL.startsWith("rediss://") ? {} : undefined
     });
-    redisClusterConnection = new Redis.Cluster(nodes, {
-      redisOptions: {
-        maxRetriesPerRequest: null
-      }
-    });
-    redisClusterConnection.on("error", (err) => {
-      logger.error("Redis cluster connection error", { error: err.message });
+    redisConnection.on("error", (err) => {
+      logger.error("Redis connection error", { error: err.message });
     });
   }
-  return redisClusterConnection;
+  return redisConnection;
 }
 
 function getQueue() {
