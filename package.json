@@ -1,28 +1,22 @@
 {
-  "name": "url-shortener",
-  "version": "1.0.0",
-  "description": "",
-  "main": "src/server.js",
+  "name": "url-shortener-monorepo",
+  "version": "2.0.0",
+  "description": "Production-grade URL shortener — microservice architecture",
+  "private": true,
+  "workspaces": [
+    "services/*",
+    "shared"
+  ],
   "scripts": {
-    "test": "jest --runInBand",
-    "start": "nodemon server.js",
-    "dev": " nodemon server.js"
+    "dev": "docker-compose up --build",
+    "dev:down": "docker-compose down -v",
+    "migrate": "node scripts/migrate-encrypt.js",
+    "gen-env": "node scripts/generate-env.js",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
   },
-  "jest": {
-    "setupFilesAfterEnv": ["<rootDir>/src/tests/setup.js"]
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "bullmq": "^5.66.0",
-    "express": "^5.2.1",
-    "mongoose": "^9.0.1",
-    "redis": "^5.10.0"
-  },
-  "devDependencies": {
-    "jest": "^30.2.0",
-    "supertest": "^7.1.4"
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
   }
 }
