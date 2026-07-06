@@ -1,2 +1,22 @@
+# Dependencies
 node_modules/
+**/node_modules/
+
+# Environment
 .env
+.env.local
+
+# Certs (generated at runtime)
+nginx/certs/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+mongo-data/
+redis-data*/
