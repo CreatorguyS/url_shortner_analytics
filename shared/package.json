@@ -1,0 +1,13 @@
+{
+  "name": "@url-shortener/shared",
+  "version": "1.0.0",
+  "description": "Shared utilities for URL shortener microservices",
+  "main": "index.js",
+  "type": "commonjs",
+  "exports": {
+    "./encryption": "./encryption.js",
+    "./logger": "./logger.js",
+    "./shard": "./shard.js",
+    "./base62": "./base62.js"
+  }
+}
