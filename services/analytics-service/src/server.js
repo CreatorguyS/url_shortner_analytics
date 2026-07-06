@@ -13,7 +13,7 @@ collectDefaultMetrics({ prefix: "analytics_service_" });
 const logger = createLogger("analytics-service");
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb://mongo:27017/url-shortener?replicaSet=rs0";
-const PORT = process.env.ANALYTICS_SERVICE_PORT || 3003;
+const PORT = process.env.PORT || process.env.ANALYTICS_SERVICE_PORT || 3003;
 
 const app = express();
 app.use(helmet());

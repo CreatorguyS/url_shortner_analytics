@@ -206,7 +206,7 @@ app.get("/", (_req, res) => {
 app.use("/", ...makeProxy(REDIRECT_SERVICE_TARGET, redirectCB, {}));
 
 // ─── Start ───────────────────────────────────────────────────────────────────
-const PORT = process.env.API_GATEWAY_PORT || 3000;
+const PORT = process.env.PORT || process.env.API_GATEWAY_PORT || 3000;
 app.listen(PORT, () => {
   logger.info(`API Gateway listening on port ${PORT}`);
 });

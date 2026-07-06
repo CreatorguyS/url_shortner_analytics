@@ -12,7 +12,7 @@ const os = require("os");
 const { createLogger } = require("@url-shortener/shared/logger");
 
 const logger = createLogger("url-service");
-const PORT = process.env.URL_SERVICE_PORT || 3001;
+const PORT = process.env.PORT || process.env.URL_SERVICE_PORT || 3001;
 const NUM_WORKERS = parseInt(process.env.URL_SERVICE_WORKERS || os.cpus().length, 10);
 
 if (cluster.isPrimary) {

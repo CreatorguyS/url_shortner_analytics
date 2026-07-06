@@ -1,0 +1,169 @@
+services:
+  # --- API Gateway (public-facing, port 3000) -------------------------------
+  - type: web
+    name: url-shortener-gateway
+    runtime: node
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: .
+    buildCommand: npm install --workspace=@url-shortener/api-gateway --omit=dev
+    startCommand: node services/api-gateway/src/gateway.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: URL_ENCRYPTION_KEY
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: URL_SERVICE_URL
+        sync: false
+      - key: REDIRECT_SERVICE_URL
+        sync: false
+      - key: ANALYTICS_SERVICE_URL
+        sync: false
+      - key: AUTH_SERVICE_URL
+        sync: false
+      - key: RATE_LIMIT_WINDOW
+        value: "10"
+      - key: RATE_LIMIT_MAX
+        value: "100"
+      - key: DDOS_BURST_LIMIT
+        value: "500"
+      - key: DDOS_WINDOW_SEC
+        value: "1"
+      - key: DDOS_BLOCK_DURATION
+        value: "60"
+      - key: CIRCUIT_BREAKER_THRESHOLD
+        value: "5"
+      - key: CIRCUIT_BREAKER_TIMEOUT
+        value: "30"
+      - key: LOG_LEVEL
+        value: info
+
+  # --- Auth Service ---------------------------------------------------------
+  - type: web
+    name: url-shortener-auth
+    runtime: node
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: .
+    buildCommand: npm install --workspace=@url-shortener/auth-service --omit=dev
+    startCommand: node services/auth-service/src/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3004
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+
+  # --- URL Service ----------------------------------------------------------
+  - type: web
+    name: url-shortener-url
+    runtime: node
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: .
+    buildCommand: npm install --workspace=@url-shortener/url-service --omit=dev
+    startCommand: node services/url-service/src/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: JWT_SECRET
+        sync: false
+      - key: URL_ENCRYPTION_KEY
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: NUM_SHARDS
+        value: "3"
+      - key: L1_CACHE_TTL_SEC
+        value: "60"
+      - key: L2_CACHE_TTL_SEC
+        value: "3600"
+      - key: LOG_LEVEL
+        value: info
+
+  # --- Redirect Service -----------------------------------------------------
+  - type: web
+    name: url-shortener-redirect
+    runtime: node
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: .
+    buildCommand: npm install --workspace=@url-shortener/redirect-service --omit=dev
+    startCommand: node services/redirect-service/src/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3002
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: NUM_SHARDS
+        value: "3"
+      - key: REDIRECT_L1_CACHE_MAX
+        value: "50000"
+      - key: REDIRECT_L1_CACHE_TTL_SEC
+        value: "60"
+      - key: L2_CACHE_TTL_SEC
+        value: "3600"
+      - key: ANALYTICS_SERVICE_URL
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+
+  # --- Analytics Service ----------------------------------------------------
+  - type: web
+    name: url-shortener-analytics
+    runtime: node
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: .
+    buildCommand: npm install --workspace=@url-shortener/analytics-service --omit=dev
+    startCommand: node services/analytics-service/src/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3003
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: ANALYTICS_CONCURRENCY
+        value: "20"
+      - key: ANALYTICS_BATCH_MS
+        value: "100"
+      - key: LOG_LEVEL
+        value: info

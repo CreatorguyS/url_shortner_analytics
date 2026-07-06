@@ -13,7 +13,7 @@ const os = require("os");
 const { createLogger } = require("@url-shortener/shared/logger");
 
 const logger = createLogger("redirect-service");
-const PORT = process.env.REDIRECT_SERVICE_PORT || 3002;
+const PORT = process.env.PORT || process.env.REDIRECT_SERVICE_PORT || 3002;
 
 // Use all available CPUs — this service handles the most traffic
 const NUM_WORKERS = parseInt(process.env.REDIRECT_WORKERS || os.cpus().length, 10);
