@@ -1,0 +1,26 @@
+{
+  "name": "@url-shortener/analytics-service",
+  "version": "1.0.0",
+  "description": "Analytics Service — click tracking, aggregation, reporting",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "dependencies": {
+    "@url-shortener/shared": "1.0.0",
+    "bullmq": "^5.66.0",
+    "compression": "^1.8.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "mongoose": "^9.0.1",
+    "prom-client": "^15.1.3",
+    "winston": "^3.17.0",
+    "ioredis": "^5.8.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
