@@ -58,15 +58,23 @@ module.exports = async function authMiddleware(req, res, next) {
       }
     }
 
-    // 2. Call Auth Service
-    const response = await fetch(`${AUTH_SERVICE_URL}/validate`, {
-      method: "GET",
-      headers: {
-        "X-API-Key":        apiKey,
-        "X-Correlation-ID": req.correlationId || "",
-        "Content-Type":     "application/json"
-      }
-    });
+    // 2. Call Auth Service (30s timeout — Render free tier cold-start)
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30000);
+    let response;
+    try {
+      response = await fetch(`${AUTH_SERVICE_URL}/validate`, {
+        method: "GET",
+        headers: {
+          "X-API-Key":        apiKey,
+          "X-Correlation-ID": req.correlationId || "",
+          "Content-Type":     "application/json"
+        },
+        signal: ctrl.signal
+      });
+    } finally {
+      clearTimeout(timer);
+    }
 
     if (!response.ok) {
       // Cache negative result
