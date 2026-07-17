@@ -154,7 +154,7 @@ app.post("/quickstart", async (req, res) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ adminToken })
-    }, 10000);
+    }, 60000); // 60s — Render free tier cold-start can take 30-60s
 
     if (!tokenResp.ok) return res.status(401).json({ error: "Auth failed." });
     const { token: jwt } = await tokenResp.json();
@@ -166,7 +166,7 @@ app.post("/quickstart", async (req, res) => {
         "Authorization": `Bearer ${jwt}`
       },
       body: JSON.stringify({ name: "User Key" })
-    }, 10000);
+    }, 60000); // 60s — Render free tier cold-start can take 30-60s
 
     if (!keyResp.ok) return res.status(500).json({ error: "Could not create key." });
     const { key } = await keyResp.json();
