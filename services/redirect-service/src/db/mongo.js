@@ -16,14 +16,16 @@ const MONGO_URI = process.env.MONGO_URI_SECONDARY ||
 
 async function connectDB() {
   try {
+    const isReplicaSet = MONGO_URI.includes("replicaSet=");
+    
     await mongoose.connect(MONGO_URI, {
       maxPoolSize: 30,         // higher pool for read-heavy workload
       minPoolSize:  5,
       socketTimeoutMS: 30_000,
       serverSelectionTimeoutMS: 8_000,
-      readPreference: "secondaryPreferred"
+      ...(isReplicaSet && { readPreference: "secondaryPreferred" })
     });
-    logger.info("MongoDB connected (redirect-service, secondaryPreferred)");
+    logger.info(`MongoDB connected (redirect-service${isReplicaSet ? ", secondaryPreferred" : ""})`);
   } catch (err) {
     logger.error("MongoDB connect failed", { error: err.message });
     process.exit(1);

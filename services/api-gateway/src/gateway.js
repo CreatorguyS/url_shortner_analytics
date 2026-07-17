@@ -33,6 +33,7 @@ const { register } = require("prom-client");
 const logger = createLogger("api-gateway");
 
 const app = express();
+app.set("trust proxy", 1);
 
 // ─── Security & Compression ──────────────────────────────────────────────────
 app.use(helmet({
@@ -133,53 +134,28 @@ app.post("/quickstart", async (req, res) => {
   if (!adminToken) return res.status(500).json({ error: "Server not configured." });
 
   try {
-    const http = require("http");
-
-    const authHost = AUTH_SERVICE_TARGET.replace(/^https?:\/\//, "").split(":")[0];
-    const authPort = AUTH_SERVICE_TARGET.split(":")[2] || 3004;
-
-    const doRequest = (path, method, body) => new Promise((resolve, reject) => {
-      const data = JSON.stringify(body);
-      const options = {
-        hostname: authHost, port: authPort,
-        path, method,
-        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(data) }
-      };
-      const r = http.request(options, (resp) => {
-        let raw = "";
-        resp.on("data", c => raw += c);
-        resp.on("end", () => resolve({ status: resp.statusCode, body: JSON.parse(raw) }));
-      });
-      r.on("error", reject);
-      r.write(data);
-      r.end();
+    const tokenResp = await fetch(`${AUTH_SERVICE_TARGET}/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ adminToken })
     });
 
-    const tokenResp = await doRequest("/token", "POST", { adminToken });
-    if (tokenResp.status !== 200) return res.status(401).json({ error: "Auth failed." });
-    const jwt = tokenResp.body.token;
+    if (!tokenResp.ok) return res.status(401).json({ error: "Auth failed." });
+    const { token: jwt } = await tokenResp.json();
 
-    const keyOptions = {
-      hostname: authHost, port: authPort,
-      path: "/keys", method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${jwt}` }
-    };
-    const keyData = JSON.stringify({ name: "User Key" });
-    const keyResp = await new Promise((resolve, reject) => {
-      const r = http.request(keyOptions, (resp) => {
-        let raw = "";
-        resp.on("data", c => raw += c);
-        resp.on("end", () => resolve({ status: resp.statusCode, body: JSON.parse(raw) }));
-      });
-      r.on("error", reject);
-      r.write(keyData);
-      r.end();
+    const keyResp = await fetch(`${AUTH_SERVICE_TARGET}/keys`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${jwt}`
+      },
+      body: JSON.stringify({ name: "User Key" })
     });
 
-    if (keyResp.status !== 201 && keyResp.status !== 200)
-      return res.status(500).json({ error: "Could not create key." });
+    if (!keyResp.ok) return res.status(500).json({ error: "Could not create key." });
+    const { key } = await keyResp.json();
 
-    res.json({ key: keyResp.body.key });
+    res.json({ key });
   } catch (err) {
     logger.error("Quickstart error", { error: err.message });
     res.status(500).json({ error: "Internal error." });

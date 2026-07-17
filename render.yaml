@@ -26,13 +26,13 @@ services:
       - key: REDIS_URL
         sync: false
       - key: URL_SERVICE_URL
-        sync: false
+        value: "http://url-shortener-url:3001"
       - key: REDIRECT_SERVICE_URL
-        sync: false
+        value: "http://url-shortener-redirect:3002"
       - key: ANALYTICS_SERVICE_URL
-        sync: false
+        value: "http://url-shortener-analytics:3003"
       - key: AUTH_SERVICE_URL
-        sync: false
+        value: "http://url-shortener-auth:3004"
       - key: RATE_LIMIT_WINDOW
         value: "10"
       - key: RATE_LIMIT_MAX
@@ -137,7 +137,7 @@ services:
       - key: L2_CACHE_TTL_SEC
         value: "3600"
       - key: ANALYTICS_SERVICE_URL
-        sync: false
+        value: "http://url-shortener-analytics:3003"
       - key: LOG_LEVEL
         value: info
 
