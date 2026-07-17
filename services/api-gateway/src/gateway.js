@@ -201,8 +201,14 @@ app.use("/", ...makeProxy(REDIRECT_SERVICE_TARGET, redirectCB, {}));
 
 // ─── Start ───────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || process.env.API_GATEWAY_PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   logger.info(`API Gateway listening on port ${PORT}`);
 });
+
+// Required by Render: prevent 502s on long-lived connections
+server.keepAliveTimeout = 120_000; // 120 seconds
+server.headersTimeout   = 121_000; // must be > keepAliveTimeout
+
+process.on("SIGTERM", () => server.close(() => process.exit(0)));
 
 module.exports = app;

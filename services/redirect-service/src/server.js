@@ -35,7 +35,7 @@ if (cluster.isPrimary) {
   const connectDB = require("./db/mongo");
 
   connectDB().then(() => {
-    const server = app.listen(PORT, () => {
+    const server = app.listen(PORT, "0.0.0.0", () => {
       logger.info(`Redirect Service worker ${process.pid} listening on port ${PORT}`);
     });
 

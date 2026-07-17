@@ -31,9 +31,13 @@ if (cluster.isPrimary) {
   const connectDB = require("./db/mongo");
 
   connectDB().then(() => {
-    const server = app.listen(PORT, () => {
+    const server = app.listen(PORT, "0.0.0.0", () => {
       logger.info(`URL Service worker ${process.pid} listening on port ${PORT}`);
     });
+
+    // Required by Render: prevent 502s on long-lived connections
+    server.keepAliveTimeout = 120_000;
+    server.headersTimeout   = 121_000;
 
     // Graceful shutdown
     process.on("SIGTERM", () => {

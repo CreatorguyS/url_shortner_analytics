@@ -36,7 +36,9 @@ app.use((err, _req, res, _next) => {
 mongoose.connect(MONGO_URI, { maxPoolSize: 5 })
   .then(() => {
     logger.info("MongoDB connected (auth-service)");
-    app.listen(PORT, () => logger.info(`Auth Service listening on port ${PORT}`));
+    const server = app.listen(PORT, "0.0.0.0", () => logger.info(`Auth Service listening on port ${PORT}`));
+    server.keepAliveTimeout = 120_000;
+    server.headersTimeout   = 121_000;
   })
   .catch((err) => { logger.error("MongoDB connect failed", { error: err.message }); process.exit(1); });
 
