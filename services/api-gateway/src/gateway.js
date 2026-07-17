@@ -137,7 +137,8 @@ app.post("/quickstart", async (req, res) => {
     const tokenResp = await fetch(`${AUTH_SERVICE_TARGET}/token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ adminToken })
+      body: JSON.stringify({ adminToken }),
+      signal: AbortSignal.timeout(5000)
     });
 
     if (!tokenResp.ok) return res.status(401).json({ error: "Auth failed." });
@@ -149,7 +150,8 @@ app.post("/quickstart", async (req, res) => {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${jwt}`
       },
-      body: JSON.stringify({ name: "User Key" })
+      body: JSON.stringify({ name: "User Key" }),
+      signal: AbortSignal.timeout(5000)
     });
 
     if (!keyResp.ok) return res.status(500).json({ error: "Could not create key." });

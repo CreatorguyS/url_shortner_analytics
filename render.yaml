@@ -101,6 +101,8 @@ services:
         sync: false
       - key: NUM_SHARDS
         value: "3"
+      - key: URL_SERVICE_WORKERS
+        value: "2"
       - key: L1_CACHE_TTL_SEC
         value: "60"
       - key: L2_CACHE_TTL_SEC
@@ -130,6 +132,8 @@ services:
         sync: false
       - key: NUM_SHARDS
         value: "3"
+      - key: REDIRECT_WORKERS
+        value: "4"
       - key: REDIRECT_L1_CACHE_MAX
         value: "50000"
       - key: REDIRECT_L1_CACHE_TTL_SEC
@@ -157,6 +161,30 @@ services:
         value: production
       - key: PORT
         value: 3003
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: ANALYTICS_CONCURRENCY
+        value: "20"
+      - key: ANALYTICS_BATCH_MS
+        value: "100"
+      - key: LOG_LEVEL
+        value: info
+
+  # --- Analytics Worker -----------------------------------------------------
+  - type: worker
+    name: url-shortener-analytics-worker
+    runtime: node
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: .
+    buildCommand: npm install --workspace=@url-shortener/analytics-service --omit=dev
+    startCommand: node services/analytics-service/src/workers/analytics.worker.js
+    envVars:
+      - key: NODE_ENV
+        value: production
       - key: MONGO_URI
         sync: false
       - key: REDIS_URL
