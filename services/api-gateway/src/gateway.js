@@ -32,6 +32,22 @@ const { register } = require("prom-client");
 
 const logger = createLogger("api-gateway");
 
+/**
+ * fetch() with a timeout — compatible with all Node.js versions.
+ * @param {string} url
+ * @param {RequestInit} options
+ * @param {number} [ms=5000]
+ */
+async function fetchWithTimeout(url, options, ms = 5000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const app = express();
 app.set("trust proxy", 1);
 
@@ -134,25 +150,23 @@ app.post("/quickstart", async (req, res) => {
   if (!adminToken) return res.status(500).json({ error: "Server not configured." });
 
   try {
-    const tokenResp = await fetch(`${AUTH_SERVICE_TARGET}/token`, {
+    const tokenResp = await fetchWithTimeout(`${AUTH_SERVICE_TARGET}/token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ adminToken }),
-      signal: AbortSignal.timeout(5000)
-    });
+      body: JSON.stringify({ adminToken })
+    }, 10000);
 
     if (!tokenResp.ok) return res.status(401).json({ error: "Auth failed." });
     const { token: jwt } = await tokenResp.json();
 
-    const keyResp = await fetch(`${AUTH_SERVICE_TARGET}/keys`, {
+    const keyResp = await fetchWithTimeout(`${AUTH_SERVICE_TARGET}/keys`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${jwt}`
       },
-      body: JSON.stringify({ name: "User Key" }),
-      signal: AbortSignal.timeout(5000)
-    });
+      body: JSON.stringify({ name: "User Key" })
+    }, 10000);
 
     if (!keyResp.ok) return res.status(500).json({ error: "Could not create key." });
     const { key } = await keyResp.json();
