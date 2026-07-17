@@ -122,6 +122,8 @@ function makeProxy(target, cb, pathRewrite) {
       target,
       changeOrigin: true,
       pathRewrite,
+      proxyTimeout: 60000, // 60s — Render free tier cold-start
+      timeout: 60000,
       on: {
         error: (err, req, res) => {
           cb.recordFailure();
